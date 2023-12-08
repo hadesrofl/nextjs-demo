@@ -1,18 +1,12 @@
-import { Attribution, ContainerMetadata } from "./Container";
-import { Thumbnail } from "./Thumbnail";
+import { GenericDataContainer, GenericDataWrapper } from "./shared/Container";
+import { ModelSummary } from "./shared/ModelSummary";
 
-export type CharacterDataWrapper = {
-  data: CharacterDataContainer;
-} & Attribution;
+export type CharacterDataWrapper = GenericDataWrapper<Character>;
 
-export type CharacterDataContainer = {
-  results: Character[];
-} & ContainerMetadata;
+export type CharacterDataContainer = GenericDataContainer<Character>;
 
 export type Character = {
   id: number;
   name: string;
-  description: string;
   modified: Date;
-  thumbnail: Thumbnail;
-};
+} & ModelSummary;

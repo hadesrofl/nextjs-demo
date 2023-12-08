@@ -1,17 +1,11 @@
-import { Attribution, ContainerMetadata } from "./Container";
-import { Thumbnail } from "./Thumbnail";
+import { GenericDataContainer, GenericDataWrapper } from "./shared/Container";
+import { ModelSummary } from "./shared/ModelSummary";
 
-export type SeriesDataWrapper = {
-  data: SeriesDataContainer;
-} & Attribution;
+export type SeriesDataWrapper = GenericDataWrapper<Series>;
 
-export type SeriesDataContainer = {
-  results: Series[];
-} & ContainerMetadata;
+export type SeriesDataContainer = GenericDataContainer<Series>;
 
 export type Series = {
   id: number;
   title: string;
-  description: string;
-  thumbnail: Thumbnail;
-};
+} & ModelSummary;

@@ -12,7 +12,7 @@ type CharacterCardContentProps = {
   attributionText: string;
 };
 
-export default function CharacterCard(props: CharacterCardProps) {
+export function CharacterCard(props: CharacterCardProps) {
   const { character, attributionText, href } = props;
   return (
     <Card>
@@ -33,7 +33,7 @@ export default function CharacterCard(props: CharacterCardProps) {
   );
 }
 
-function CharacterCardContent(props: CharacterCardContentProps) {
+export function CharacterCardContent(props: CharacterCardContentProps) {
   const { character, attributionText } = props;
   return (
     <>

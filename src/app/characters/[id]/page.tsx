@@ -1,13 +1,14 @@
-import CharacterCard from "@components/CharacterCard";
 import { notFound } from "next/navigation";
-import { Grid } from "@mui/material";
-import SeriesCard from "@components/SeriesCard";
+import { Grid, Skeleton } from "@mui/material";
 import loadCharacters from "@server/api/characters/loadCharacters";
-import loadSeries from "@server/api/series/loadSeries";
 import loadCharacter from "@server/api/characters/loadCharacter";
 import { CharacterDataWrapper } from "@customTypes/CharacterTypes";
-import { SeriesDataWrapper } from "@customTypes/Series";
-import CenteredBox from "@components/CenteredBox";
+import CenteredBox from "@components/server/CenteredBox";
+import { CharacterCard } from "@components/server/CharacterCard";
+import { Suspense } from "react";
+import { CardSkeleton } from "@components/server/skeletons/CardSkeleton";
+import SeriesCardList from "@components/server/SeriesCardList";
+import Loading from "../loading";
 
 type CharacterPageProps = {
   params: {
@@ -35,34 +36,26 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
     (await characterResponse.json()) as CharacterDataWrapper;
   if (data.count !== 1) notFound();
   const character = data.results[0];
-  const seriesResponse = await loadSeries(character.id);
-  const seriesDataWrapper = (await seriesResponse.json()) as SeriesDataWrapper;
 
   return (
     <CenteredBox>
       <Grid container spacing={3}>
         <Grid item xs={12} md={3} className="flex items-stretch">
+          <Suspense
+            fallback={
+              <Skeleton className="bg-slate-200">
+                <CardSkeleton />
+              </Skeleton>
+            }
+          ></Suspense>
           <CharacterCard
             character={character}
             attributionText={attributionText}
           />
         </Grid>
-        {seriesDataWrapper.data.results.map((series) => {
-          return (
-            <Grid
-              key={crypto.randomUUID()}
-              item
-              xs={12}
-              md={2}
-              className="flex items-stretch"
-            >
-              <SeriesCard
-                series={series}
-                attributionText={seriesDataWrapper.attributionText}
-              />
-            </Grid>
-          );
-        })}
+        <Suspense fallback={<Loading />}>
+          <SeriesCardList characterId={character.id.toString()} />
+        </Suspense>
       </Grid>
     </CenteredBox>
   );

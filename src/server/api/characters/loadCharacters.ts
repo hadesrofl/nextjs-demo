@@ -1,48 +1,61 @@
 "use server";
 import { Character, CharacterDataWrapper } from "@customTypes/CharacterTypes";
+import { createEmptyDataWrapper } from "@customTypes/shared/Container";
 import createApiCredentials from "@helper/createHashKey";
+import { loadWithDescriptionAndThumbnail } from "@helper/getModelSummaries";
+import isDevMode from "@helper/isDevMode";
+import {
+  calculateAllowedFetchLimit,
+  extractDataWrapper,
+  updateGetQueryParams,
+} from "@helper/marvelApi";
+import getMockCharacters from "@server/mockData/mockCharacters";
 
 export default async function loadCharacters() {
   return loadCharactersWithDescriptionAndThumbnail();
 }
 
-async function loadCharactersWithDescriptionAndThumbnail() {
+async function fetchCharacters(limit: number, offset: number) {
   const { timestamp, publicKey, keyHash } = await createApiCredentials();
+  const response = isDevMode()
+    ? Response.json(await getMockCharacters())
+    : await fetch(
+        `https://gateway.marvel.com/v1/public/characters?ts=${timestamp}&apikey=${publicKey}&hash=${keyHash}&limit=${limit}&offset=${offset}`,
+        { next: { revalidate: 86400 } } // update cache once per day
+      );
+
+  return await extractDataWrapper<Character>(response);
+}
+
+async function loadCharactersWithDescriptionAndThumbnail() {
   const limit = 100;
   let offset = 0;
   let total = 0;
-  let characters: Character[] = [];
-  let returnWrapper: CharacterDataWrapper;
+  let finalDataWrapper: CharacterDataWrapper =
+    createEmptyDataWrapper<Character>();
+
   do {
-    const response = await fetch(
-      `https://gateway.marvel.com/v1/public/characters?ts=${timestamp}&apikey=${publicKey}&hash=${keyHash}&limit=${limit}&offset=${offset}`,
-      { next: { revalidate: 86400 } } // update cache once per day
-    );
-    const wrapper = (await response.json()) as CharacterDataWrapper;
-    offset += wrapper.data.count;
-    total = wrapper.data.total;
-    characters = characters.concat(
-      wrapper.data.results.filter(
-        (character) =>
-          character.description &&
-          !character.thumbnail.path.includes("not_available")
-      )
-    );
+    const fetchLimit = calculateAllowedFetchLimit(total, limit, offset);
+    const wrapper = await fetchCharacters(fetchLimit, offset);
+    const params = updateGetQueryParams(wrapper.data, offset);
 
-    while (characters.length > limit) characters.pop();
+    offset = params.offset;
+    total = params.total;
 
-    returnWrapper = {
-      data: {
-        results: characters,
-        total: wrapper.data.total,
-        count: wrapper.data.count,
-        offset: wrapper.data.offset,
-        limit: wrapper.data.limit,
+    finalDataWrapper = await loadWithDescriptionAndThumbnail(
+      wrapper.data,
+      {
+        attributionText: wrapper.attributionText,
+        copyright: wrapper.copyright,
       },
-      attributionText: wrapper.attributionText,
-      copyright: wrapper.copyright,
-    };
-  } while (offset < total && returnWrapper.data.results.length < limit);
+      finalDataWrapper.data.results,
+      limit
+    );
+  } while (
+    !isDevMode() &&
+    offset < total &&
+    finalDataWrapper.data.results.length < limit
+  );
 
-  return Response.json(returnWrapper);
+  return Response.json(finalDataWrapper);
 }
